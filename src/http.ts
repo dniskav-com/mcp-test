@@ -27,6 +27,10 @@ import { registerNoteTools } from "./tools/notes.js";
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
+// API Key para autenticación — se configura como variable de entorno en Docker.
+// Si no está definida, el servidor arranca sin protección (solo para desarrollo local).
+const API_KEY = process.env.API_KEY;
+
 // ─────────────────────────────────────────────
 // HONO — rutas propias (health, futuras APIs)
 // ─────────────────────────────────────────────
@@ -51,6 +55,13 @@ const server = http.createServer(async (req, res) => {
 
   // Las llamadas MCP van a /mcp — las gestiona el SDK directamente
   if (url === "/mcp" && req.method === "POST") {
+    // Validación de API Key — si está configurada, la request debe incluirla
+    // en el header "x-api-key". Si no coincide, respondemos 401.
+    if (API_KEY && req.headers["x-api-key"] !== API_KEY) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Unauthorized" }));
+      return;
+    }
     // Leemos el body del request manualmente
     const chunks: Buffer[] = [];
     for await (const chunk of req) chunks.push(chunk);
