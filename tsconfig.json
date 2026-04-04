@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    // El código fuente TypeScript está en src/
+    "rootDir": "./src",
+    // El código compilado (JavaScript) va a dist/
+    "outDir": "./dist",
+    // Usamos el estándar ES2020 (soporte a async/await, nullish coalescing, etc.)
+    "target": "ES2020",
+    // CommonJS es el sistema de módulos de Node.js (require/module.exports)
+    "module": "commonjs",
+    // Activa todas las verificaciones estrictas de TypeScript
+    // Esto te ayuda a detectar errores antes de ejecutar el código
+    "strict": true,
+    // Permite importar módulos JSON directamente con import data from './file.json'
+    "resolveJsonModule": true,
+    // Permite usar default imports desde módulos sin default export
+    "esModuleInterop": true,
+    // Genera archivos .d.ts (definiciones de tipos) — útil si publicas el paquete
+    "declaration": true,
+    // Genera source maps para poder debuggear TypeScript directamente
+    "sourceMap": true,
+    // Le dice a TypeScript que estamos en Node.js y que incluya los tipos globales
+    // de Node (fs, path, process, __dirname, Buffer, etc.)
+    "types": ["node"]
+  },
+  // Solo compilamos los archivos dentro de src/
+  "include": ["src/**/*"],
+  // Ignoramos las dependencias (node_modules) y el output compilado (dist)
+  "exclude": ["node_modules", "dist"]
+}
