@@ -1,0 +1,47 @@
+# ─────────────────────────────────────────────
+# DOCKER COMPOSE — Notes MCP Server
+# ─────────────────────────────────────────────
+#
+# Uso:
+#   Desarrollo local:   docker compose up
+#   Producción (VPS):   docker compose -f docker-compose.yml up -d
+#
+# El flag -d arranca el contenedor en background (detached mode)
+
+services:
+  notes-mcp:
+    # Construye la imagen desde el Dockerfile de este directorio
+    build: .
+
+    # Nombre del contenedor (útil para docker logs, docker exec, etc.)
+    container_name: notes-mcp
+
+    # Mapeo de puertos: puerto_host:puerto_contenedor
+    # En producción Caddy hace de proxy, así que el puerto
+    # del host no necesita ser público (puedes cambiarlo)
+    ports:
+      - "3000:3000"
+
+    # Variables de entorno
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+
+    # Volumen para persistir las notas
+    # Si el contenedor se reinicia o actualiza, las notas no se pierden
+    # ./data en tu máquina/VPS ↔ /app/data dentro del contenedor
+    volumes:
+      - ./data:/app/data
+
+    # Política de reinicio: si el proceso muere, Docker lo relanza
+    # unless-stopped = se reinicia siempre excepto si lo paras manualmente
+    restart: unless-stopped
+
+    # Health check: Docker comprueba cada 30s que el servidor responde
+    # Si falla 3 veces seguidas, marca el contenedor como "unhealthy"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
