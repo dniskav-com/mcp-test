@@ -18,6 +18,8 @@ jobs:
           script: |
             cd ${{ secrets.VPS_PATH }}
             git pull origin main
-            npm install --production
-            npm run build
+            export BUN_INSTALL="$HOME/.bun"
+            export PATH="$BUN_INSTALL/bin:$PATH"
+            bun install
+            bun run build
             docker compose up -d --build
