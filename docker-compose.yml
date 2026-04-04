@@ -3,15 +3,18 @@
 # ─────────────────────────────────────────────
 #
 # Uso:
-#   Desarrollo local:   docker compose up
-#   Producción (VPS):   docker compose -f docker-compose.yml up -d
+#   Desarrollo local:   docker compose up --build
+#   Producción (VPS):   el pipeline hace docker compose pull + up -d
 #
-# El flag -d arranca el contenedor en background (detached mode)
+# En producción la imagen viene de GitHub Container Registry (GHCR).
+# En local puedes hacer build directamente con --build.
 
 services:
   notes-mcp:
-    # Construye la imagen desde el Dockerfile de este directorio
-    build: .
+    # En producción usa la imagen publicada por el pipeline en GHCR.
+    # En local, si no existe la imagen remota, haz: docker compose up --build
+    image: ghcr.io/dniskav/notes-mcp:latest
+    build: .  # fallback para desarrollo local
 
     # Nombre del contenedor (útil para docker logs, docker exec, etc.)
     container_name: notes-mcp

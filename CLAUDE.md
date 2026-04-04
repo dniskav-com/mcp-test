@@ -75,6 +75,27 @@ Reiniciar Caddy tras el cambio:
 systemctl reload caddy
 ```
 
+## Pipeline de deploy (GitHub Actions)
+
+El pipeline se ejecuta automáticamente en cada push a `main`.
+Construye la imagen Docker, la publica en GHCR, y despliega en el VPS.
+
+**Secrets necesarios en GitHub** (Settings → Secrets → Actions):
+
+| Secret | Valor |
+|--------|-------|
+| `VPS_HOST` | IP del VPS Hetzner |
+| `VPS_USER` | usuario SSH (ej: `daniel`) |
+| `VPS_SSH_KEY` | contenido de `~/.ssh/id_rsa` (clave privada) |
+| `VPS_PATH` | ruta al repo en el VPS (ej: `/home/daniel/notes-mcp`) |
+
+**Primera vez en el VPS** (solo una vez):
+```bash
+git clone https://github.com/dniskav/mcp-test.git notes-mcp
+cd notes-mcp
+# A partir de aquí el pipeline se encarga de todo
+```
+
 ## Conectar Claude Code (en este VPS) al MCP
 
 ```bash
