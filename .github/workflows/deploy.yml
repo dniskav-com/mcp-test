@@ -1,83 +1,23 @@
-# ─────────────────────────────────────────────
-# PIPELINE DE DEPLOY — Notes MCP Server
-# ─────────────────────────────────────────────
-#
-# Se ejecuta cada vez que hay un push a main.
-#
-# Pasos:
-#   1. Build → compila TypeScript y construye imagen Docker
-#   2. Push  → publica la imagen en GitHub Container Registry (gratis)
-#   3. Deploy → SSH al VPS, pull de la nueva imagen, reinicia el contenedor
-#
-# Secrets necesarios en GitHub (Settings → Secrets → Actions):
-#   VPS_HOST     → IP o dominio del VPS (ej: 123.123.123.123)
-#   VPS_USER     → usuario SSH (ej: daniel)
-#   VPS_SSH_KEY  → clave privada SSH (el contenido de ~/.ssh/id_rsa)
-#   VPS_PATH     → ruta al proyecto en el VPS (ej: /home/daniel/notes-mcp)
-
 name: Deploy Notes MCP
 
 on:
   push:
-    branches: [main]
-
-env:
-  # GitHub Container Registry — gratuito, ligado a tu cuenta de GitHub
-  # ghcr.io/dniskav/notes-mcp será el nombre de la imagen
-  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/notes-mcp
+    branches:
+      - main
 
 jobs:
   deploy:
-    name: Build & Deploy
     runs-on: ubuntu-latest
-
-    # Permisos necesarios para publicar en GitHub Container Registry
-    permissions:
-      contents: read
-      packages: write
-
     steps:
-      # ── 1. Checkout ──────────────────────────────
-      - name: Checkout código
-        uses: actions/checkout@v4
-
-      # ── 2. Login en GitHub Container Registry ────
-      - name: Login en GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          # GITHUB_TOKEN es automático — no necesitas configurarlo
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # ── 3. Build y push de la imagen Docker ──────
-      - name: Build y push imagen
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          # Etiquetamos con 'latest' y con el SHA del commit
-          # El SHA permite hacer rollback a cualquier versión anterior
-          tags: |
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:${{ github.sha }}
-
-      # ── 4. Deploy en el VPS via SSH ───────────────
-      - name: Deploy en VPS
-        uses: appleboy/ssh-action@v1
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             cd ${{ secrets.VPS_PATH }}
-
-            # Login en GHCR desde el VPS para poder hacer pull
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-            # Actualiza la imagen y reinicia el contenedor
-            docker compose pull
-            docker compose up -d
-
-            # Limpia imágenes antiguas para no llenar el disco
-            docker image prune -f
+            git pull origin main
+            npm install --production
+            npm run build
+            docker compose up -d --build
