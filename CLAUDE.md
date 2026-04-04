@@ -66,8 +66,11 @@ Añadir a `/etc/caddy/Caddyfile`:
 
 ```caddy
 mcp.dniskav.com {
-    reverse_proxy localhost:3000
+    reverse_proxy localhost:3001
 }
+
+# Nota: el puerto 3000 está reservado para dniskav.com (web)
+# El MCP usa el 3001 en el host, mapeado al 3000 interno del contenedor
 ```
 
 Reiniciar Caddy tras el cambio:

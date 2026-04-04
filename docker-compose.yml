@@ -23,7 +23,7 @@ services:
     # En producción Caddy hace de proxy, así que el puerto
     # del host no necesita ser público (puedes cambiarlo)
     ports:
-      - "3000:3000"
+      - "3001:3000"
 
     # Variables de entorno
     environment:
