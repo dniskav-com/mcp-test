@@ -65,7 +65,16 @@ const server = http.createServer(async (req, res) => {
     // Leemos el body del request manualmente
     const chunks: Buffer[] = [];
     for await (const chunk of req) chunks.push(chunk);
-    const body = JSON.parse(Buffer.concat(chunks).toString());
+
+    // Un body malformado no debe tumbar el proceso (unhandled rejection)
+    let body: unknown;
+    try {
+      body = JSON.parse(Buffer.concat(chunks).toString());
+    } catch {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Invalid JSON body" }));
+      return;
+    }
 
     // Instancia fresca por cada request (patrón stateless)
     const mcpServer = new McpServer({ name: "notes-mcp", version: "1.0.0" });
