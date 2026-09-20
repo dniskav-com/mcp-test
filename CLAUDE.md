@@ -34,8 +34,22 @@ docker compose restart # reiniciar tras un cambio
 
 ## Despliegue en este VPS
 
-El servidor corre como contenedor Docker en el puerto 3000.
-Caddy hace de reverse proxy con HTTPS automático.
+El servidor corre como contenedor Docker: puerto **3001 en el host** → 3000 en el
+contenedor. Caddy hace de reverse proxy con HTTPS automático en
+`mcp-notes.dniskav.com`.
+
+### Seguridad (2026-09-20)
+
+- **Autenticación**: `API_KEY` en `.env` (no commitear). Toda request a `/mcp`
+  debe llevar el header `x-api-key`; sin él responde 401. Al registrar el MCP
+  desde fuera hay que incluir el header en la config del cliente.
+- **JSON malformado** en `/mcp` responde 400 (no tumba el proceso) — fix en
+  `http.ts` (`a299149`). No quitar el try/catch del parseo del body.
+- **Firewall**: UFW deniega por defecto, pero Docker publica `3001` y salta las
+  reglas de UFW; la chain `DOCKER-USER` de iptables bloquea el 3001 desde
+  internet (`ctorigdstport 3001 → DROP`). Solo Caddy (desde la red Docker
+  172.16.0.0/12) llega al puerto. Si se cambia el puerto host, actualizar esa
+  regla.
 
 ### Arrancar por primera vez
 
@@ -57,26 +71,50 @@ docker compose up -d --build
 
 ```bash
 docker compose ps
-curl http://localhost:3000/health
+curl http://localhost:3001/health
 ```
 
 ## Caddy config
 
-Añadir a `/etc/caddy/Caddyfile`:
+Caddy corre como contenedor Docker gestionado con docker-compose en `/root/var/www/dniskav/`:
+
+```
+/root/var/www/dniskav/
+  Caddyfile         → config de Caddy (dominios y proxies)
+  Dockerfile        → imagen con plugin cloudflare-dns
+  docker-compose.yml → gestión del contenedor
+  .env              → CLOUDFLARE_API_TOKEN (no commitear)
+```
+
+El dominio del MCP está definido en el Caddyfile:
 
 ```caddy
-mcp.dniskav.com {
-    reverse_proxy localhost:3001
+mcp-notes.dniskav.com {
+    reverse_proxy host.docker.internal:3001
 }
-
-# Nota: el puerto 3000 está reservado para dniskav.com (web)
-# El MCP usa el 3001 en el host, mapeado al 3000 interno del contenedor
 ```
 
-Reiniciar Caddy tras el cambio:
+### Gestión de Caddy
+
 ```bash
-systemctl reload caddy
+cd /root/var/www/dniskav
+
+# Recargar config tras cambiar el Caddyfile (sin downtime):
+docker-compose exec caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+
+# Recrear el contenedor (tras cambios en Dockerfile):
+docker-compose up -d --build
+
+# Ver logs:
+docker-compose logs -f
 ```
+
+> **Importante:** Si editas el Caddyfile y haces `caddy reload` pero no funciona,
+> puede que el bind mount tenga un inode obsoleto (ocurre cuando `git` reemplaza
+> el archivo). En ese caso, recrea el contenedor:
+> ```bash
+> docker-compose up -d --force-recreate
+> ```
 
 ## Pipeline de deploy (GitHub Actions)
 
@@ -102,7 +140,7 @@ cd notes-mcp
 ## Conectar Claude Code (en este VPS) al MCP
 
 ```bash
-claude mcp add notes-http http://localhost:3000/mcp --scope user
+claude mcp add notes-http http://localhost:3001/mcp --scope user
 ```
 
 Esto conecta Claude Code del VPS directamente al servidor HTTP local,
@@ -113,7 +151,7 @@ sin pasar por internet.
 Una vez desplegado con Caddy, registrar en el Mac:
 
 ```bash
-claude mcp add notes-remote https://mcp.dniskav.com/mcp --transport http --scope user
+claude mcp add notes-remote https://mcp-notes.dniskav.com/mcp --transport http --scope user
 ```
 
 ## Notas importantes
